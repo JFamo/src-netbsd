@@ -49,6 +49,7 @@
 __RCSID("$NetBSD: pthread_cond.c,v 1.65.6.1 2020/01/26 10:55:16 martin Exp $");
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -129,12 +130,21 @@ int
 pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		       const struct timespec *abstime)
 {
+	// DEBUG
+	printf("[NetBSD] pthread_cond_timedwait\n");
+
 	pthread_t self;
 	int retval;
 	clockid_t clkid = pthread_cond_getclock(cond);
 
+	// DEBUG
+	printf("[NetBSD] got clock for pthread_cond\n");
+
 	if (__predict_false(__uselibcstub))
 		return __libc_cond_timedwait_stub(cond, mutex, abstime);
+
+	// DEBUG
+	printf("[NetBSD] passed stub for timedwait\n");
 
 	pthread__error(EINVAL, "Invalid condition variable",
 	    cond->ptc_magic == _PT_COND_MAGIC);
@@ -143,35 +153,94 @@ pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	pthread__error(EPERM, "Mutex not locked in condition wait",
 	    mutex->ptm_owner != NULL);
 
+	// DEBUG
+	printf("[NetBSD] passed pthread_error for timedwait\n");
+
 	self = pthread__self();
+
+	// DEBUG
+	printf("[NetBSD] got self\n");
 
 	/* Just hang out for a while if threads aren't running yet. */
 	if (__predict_false(pthread__started == 0)) {
+
+		// DEBUG
+		printf("[NetBSD] returning wait nothread\n");
+
 		return pthread_cond_wait_nothread(self, mutex, cond, abstime);
 	}
 	if (__predict_false(self->pt_cancel)) {
+
+		// DEBUG
+		printf("[NetBSD] pthread cancelled\n");
+
 		pthread__cancelled();
 	}
 
+	// DEBUG
+	printf("[NetBSD] about to spinlock on cv\n");
+
 	/* Note this thread as waiting on the CV. */
 	pthread__spinlock(self, &cond->ptc_lock);
+
+	// DEBUG
+	printf("[NetBSD] completed spinlock\n");
+
 	cond->ptc_mutex = mutex;
+
+	// DEBUG
+	printf("[NetBSD] setting mutex\n");
+
 	PTQ_INSERT_HEAD(&cond->ptc_waiters, self, pt_sleep);
+
+	// DEBUG
+	printf("[NetBSD] inserted HEAD\n");
+
 	self->pt_sleepobj = cond;
+
+	// DEBUG
+	printf("[NetBSD] set sleep obj\n");
+
 	pthread__spinunlock(self, &cond->ptc_lock);
 
+	// DEBUG
+	printf("[NetBSD] unlocked spinlock\n");
+
 	do {
+
+		// DEBUG
+		printf("[NetBSD] preparing to unlock mutex\n");
+
 		self->pt_willpark = 1;
 		pthread_mutex_unlock(mutex);
 		self->pt_willpark = 0;
+
+		// DEBUG
+		printf("[NetBSD] unlocked mutex\n");
+
 		do {
+
+			// DEBUG
+			printf("[NetBSD] about to enter lwp park\n");
+
 			retval = _lwp_park(clkid, TIMER_ABSTIME,
 			    __UNCONST(abstime), self->pt_unpark,
 			    __UNVOLATILE(&mutex->ptm_waiters),
 			    __UNVOLATILE(&mutex->ptm_waiters));
 			self->pt_unpark = 0;
+
+			// DEBUG
+			printf("[NetBSD] finished lwp park\n");
+
 		} while (retval == -1 && errno == ESRCH);
+
+		// DEBUG
+		printf("[NetBSD] reobtaining mutex...\n");
+
 		pthread_mutex_lock(mutex);
+
+		// DEBUG
+		printf("[NetBSD] reobtained mutex.\n");
 
 		/*
 		 * If we have cancelled then exit.  POSIX dictates that
@@ -182,7 +251,7 @@ pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		 *
 		 * If awoke early, we may still be on the sleep queue and
 		 * must remove ourself.
-		 */
+		 */			
 		if (__predict_false(retval != 0)) {
 			switch (errno) {
 			case EINTR:
@@ -195,13 +264,24 @@ pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 			}
 		}
 		if (__predict_false(self->pt_cancel | retval)) {
+
+			// DEBUG
+			printf("[NetBSD] about to pthread_cond_signal from wait\n");
+
 			pthread_cond_signal(cond);
 			if (self->pt_cancel) {
 				pthread__cancelled();
 			}
 			break;
 		}
+
+		// DEBUG
+		printf("[NetBSD] looping pthread wait\n");
+
 	} while (self->pt_sleepobj != NULL);
+
+	// DEBUG
+	printf("[NetBSD] returning from pthread wait\n");
 
 	return retval;
 }
@@ -209,8 +289,13 @@ pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 int
 pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
+	// DEBUG
+	printf("[NetBSD] pthread_cond_wait\n");
+
 	if (__predict_false(__uselibcstub))
 		return __libc_cond_wait_stub(cond, mutex);
+
+	printf("[NetBSD] passed use libc stub\n");
 
 	return pthread_cond_timedwait(cond, mutex, NULL);
 }
