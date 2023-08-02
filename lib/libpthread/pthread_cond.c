@@ -93,6 +93,10 @@ pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
 	    (attr == NULL) || (attr->ptca_magic == _PT_CONDATTR_MAGIC));
 
 	cond->ptc_magic = _PT_COND_MAGIC;
+
+	// DEBUG
+	printf("[NetBSD] Init pthread_lock cond = %p &cond->ptc_lock = %p\n", cond, &cond->ptc_lock);
+
 	pthread_lockinit(&cond->ptc_lock);
 	PTQ_INIT(&cond->ptc_waiters);
 	cond->ptc_mutex = NULL;
@@ -179,6 +183,9 @@ pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 
 	// DEBUG
 	printf("[NetBSD] about to spinlock on cv\n");
+	printf("[NetBSD] self at %p\n", &self);
+	printf("[NetBSD] cond = %p\n", cond);
+	printf("[NetBSD] &cond->ptc_lock = %p\n", &cond->ptc_lock);
 
 	/* Note this thread as waiting on the CV. */
 	pthread__spinlock(self, &cond->ptc_lock);

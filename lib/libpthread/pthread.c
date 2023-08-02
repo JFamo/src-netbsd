@@ -321,6 +321,9 @@ pthread__initthread(pthread_t t)
 	t->pt_lwpctl = &pthread__dummy_lwpctl;
 	t->pt_droplock = NULL;
 
+	// DEBUG
+	printf("[NetBSD] Initializing lockops from %p to thread at %p\n", pthread__lock_ops, &t->pt_lockops);
+
 	memcpy(&t->pt_lockops, pthread__lock_ops, sizeof(t->pt_lockops));
 	pthread_mutex_init(&t->pt_lock, NULL);
 	PTQ_INIT(&t->pt_cleanup_stack);
