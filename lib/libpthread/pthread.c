@@ -322,6 +322,7 @@ pthread__initthread(pthread_t t)
 	t->pt_droplock = NULL;
 
 	// DEBUG
+	printf("[NetBSD] pthread_initthread\n");
 	printf("[NetBSD] Initializing lockops from %p to thread at %p\n", pthread__lock_ops, &t->pt_lockops);
 
 	memcpy(&t->pt_lockops, pthread__lock_ops, sizeof(t->pt_lockops));

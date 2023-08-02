@@ -95,6 +95,7 @@ pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
 	cond->ptc_magic = _PT_COND_MAGIC;
 
 	// DEBUG
+	printf("[NetBSD] pthread_cond_init\n");
 	printf("[NetBSD] Init pthread_lock cond = %p &cond->ptc_lock = %p\n", cond, &cond->ptc_lock);
 
 	pthread_lockinit(&cond->ptc_lock);
