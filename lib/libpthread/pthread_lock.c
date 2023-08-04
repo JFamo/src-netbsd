@@ -134,9 +134,7 @@ static const struct pthread_lock_ops pthread__lock_ops_atomic = {
  * threads will be active for the process, so atomicity will not be
  * required.
  */
-
-// DEBUG - attempt setting to atomic initially
-const struct pthread_lock_ops *pthread__lock_ops = &pthread__lock_ops_atomic;
+const struct pthread_lock_ops *pthread__lock_ops = &pthread__lock_ops_ras;
 
 /*
  * Prevent this routine from being inlined.  The common case is no
